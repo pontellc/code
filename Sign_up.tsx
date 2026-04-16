@@ -1,0 +1,205 @@
+import { StyleSheet, Text, View, Pressable, Image, TextInput, ScrollView, Alert } from "react-native"; // CHANGED: added Alert
+import { useRouter } from "expo-router";
+import { useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage"; // CHANGED: save new user info after successful signup
+import { Colors } from "../styles/colors";
+
+
+export default function SignUp() {
+  const router = useRouter();
+
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
+  const API_URL = "http://192.168.1.162:5000"; // CHANGED: local backend URL for phone testing
+
+  const handleSignUp = async () => { // CHANGED: now creates account through backend first
+    try {
+      if (!name.trim() || !email.trim() || !password.trim() || !confirmPassword.trim()) { // CHANGED: validation
+        Alert.alert("Error", "Please fill out all fields.");
+        return;
+      }
+
+      if (password !== confirmPassword) { // CHANGED: confirm password check
+        Alert.alert("Error", "Passwords do not match.");
+        return;
+      }
+
+      const response = await fetch(`${API_URL}/api/signup`, { // CHANGED: call backend signup route
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: name.trim(),
+          email: email.trim().toLowerCase(), // CHANGED: normalize email
+          password: password.trim(),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) { // CHANGED: show backend error and stop
+        Alert.alert("Signup Failed", data.error || "Could not create account.");
+        return;
+      }
+
+      await AsyncStorage.setItem("userId", String(data.userId)); // CHANGED: save user after successful signup
+      await AsyncStorage.setItem("userName", name.trim());
+      await AsyncStorage.setItem("userEmail", email.trim().toLowerCase());
+
+      router.push("/screening"); // CHANGED: only continue after signup succeeds
+    } catch (error) {
+      console.log("Signup error:", error);
+      Alert.alert("Error", "Could not connect to the server.");
+    }
+  };
+
+  return (
+    <ScrollView contentContainerStyle={styles.container}>
+      <View style={styles.top}>
+        <Image
+          source={require("../assets/images/SafeBitesLogo.png")}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+      </View>
+
+      <View style={styles.form}>
+        <Text style={styles.title}>Sign Up</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Name"
+          placeholderTextColor={"#7d6d73"}
+          value={name}
+          onChangeText={setName}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Email"
+          placeholderTextColor={"#7d6d73"}
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Password"
+          placeholderTextColor={"#7d6d73"}
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Confirm Password"
+          placeholderTextColor={"#7d6d73"}
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
+          secureTextEntry
+        />
+        <View style={styles.buttonContainer}>
+          <Pressable style={styles.button} onPress={handleSignUp}>
+            <Text style={styles.buttonText}>Sign Up</Text>
+          </Pressable>
+        </View>
+
+      </View>
+
+      <View style={styles.bottomText}>
+        <Text style={styles.extraText}>
+          Already have an account?{" \n"}
+          <Text style={styles.link} onPress={() => router.push("/Login")}>
+            Login
+          </Text>
+        </Text>
+      </View>
+    </ScrollView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flexGrow: 1,
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 24,
+    paddingTop: 60,
+    justifyContent: "space-between",
+  },
+
+  top: {
+    alignItems: "center",
+    marginBottom: 40,
+  },
+
+  logo: {
+    width: 180,
+    height: 180,
+    marginBottom: 20,
+  },
+
+  title: {
+    fontSize: 23,
+    color: Colors.secondaryText,
+    fontFamily: "Quicksand-Medium",
+    paddingLeft: 7
+  },
+
+  form: {
+    gap: 16,
+    marginTop: -120,
+    alignSelf: "center",
+    width: "90%"
+  },
+
+  buttonContainer: {
+    marginTop: 50,
+  },
+
+  input: {
+    backgroundColor: Colors.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 25,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: Colors.purpleBorder,
+    color: Colors.secondaryText, // CHANGED: match login field text color
+  },
+
+  button: {
+    backgroundColor: Colors.secondaryButton,
+    paddingVertical: 8,
+    borderRadius: 30,
+    alignItems: "center",
+    alignSelf: "center",
+    width: "60%"
+  },
+
+  buttonText: {
+    color: "#FFF8F3",
+    fontSize: 20,
+    fontFamily: "Quicksand-Regular",
+  },
+
+  bottomText: {
+    alignItems: "center",
+    marginTop: 20,
+    marginBottom: 20,
+  },
+
+  extraText: {
+    color: Colors.secondaryText,
+    fontSize: 16,
+    textAlign: "center"
+  },
+
+  link: {
+    color: Colors.secondaryText,
+    fontWeight: "bold",
+    textAlign: "center"
+  },
+});
